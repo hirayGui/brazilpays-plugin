@@ -30,11 +30,14 @@ add_filter('woocommerce_payment_gateways', 'add_to_woo_brazilpays_gateway');
 function brazilpays_init()
 {
 	if (class_exists('WC_Payment_Gateway')) {
-		require_once plugin_dir_path( __FILE__ ) . '/includes/class-brazilpays-gateway.php';
-	}
+		require_once plugin_dir_path( __FILE__ ) . '/includes/class-brazilpays-gateway-pix.php';
+        require_once plugin_dir_path( __FILE__ ) . '/includes/class-brazilpays-gateway-credit.php';
+        require_once plugin_dir_path( __FILE__ ) . '/includes/brazilpays-description-fields.php';
+    }
 }
 
 function add_to_woo_brazilpays_gateway($gateways){
-   $gateways[] = 'WC_BrazilPays_Gateway';
+   $gateways[] = 'WC_BrazilPays_Gateway_Pix';
+   $gateways[] = 'WC_BrazilPays_Gateway_Credit';
    return $gateways;
 }
