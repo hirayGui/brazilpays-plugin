@@ -1,16 +1,16 @@
 <?php
 
 /**
- * WC_BrazilPays_Gateway_Pix
+ * WC_BrazilPays_Gateway_Credit
  *
- * Providencia um Gateway de pagamento próprio via PIX do BrazilPays
+ * Providencia um Gateway de pagamento próprio via Cartão de Crédito do BrazilPays
  *
- * @class       WC_BrazilPays_Gateway_Pix
+ * @class       WC_BrazilPays_Gateway_Credit
  * @extends     WC_Payment_Gateway
  * @version     2.1.0
  * @package     WooCommerce\Classes\Payment
  */
-class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
+class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 {
 
 	/**
@@ -56,8 +56,9 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 		add_action('woocommerce_thankyou_' . $this->id, array($this, 'thankyou_page'));
 		
 
-		//função verifica se pagamentos foram efetuados
-		add_action('rest_api_init', array($this, 'brazilpays_check_payment_status'), 10);
+		//função verifica se pagamentos forma efetuados
+		// add_action('rest_api_init', array($this, 'brazilpays_check_payment_status'), 10);
+		
 
 		// Customer Emails.
 		add_action('woocommerce_email_before_order_table', array($this, 'email_instructions'), 10, 3);
@@ -69,14 +70,14 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 	 */
 	protected function setup_properties()
 	{
-		$this->id                 = 'brazilpays-pix';
+		$this->id                 = 'brazilpays-credit';
         $this->merchant_code	  = __('Adicionar Merchant Code', 'brazilpays-plugin ');
         $this->public_key         = __('Adicionar Public Key', 'brazilpays-plugin ');
-		$this->icon               = apply_filters('brazilpays-plugin', plugins_url('../assets/icon-pix.png', __FILE__));
-		$this->method_title       = __('Pix', 'brazilpays-plugin ');
-		$this->method_description = __('Receba pagamentos em Pix utilizando sua conta BrazilPays', 'brazilpays-plugin ');
+		$this->icon               = apply_filters('brazilpays-plugin', plugins_url('../assets/icon-credit.png', __FILE__));
+		$this->method_title       = __('Cartão de Crédito', 'brazilpays-plugin ');
+		$this->method_description = __('Receba pagamentos no crédito utilizando sua conta BrazilPays', 'brazilpays-plugin ');
 		$this->has_fields         = false;
-		$this->instructions 	  = __('Escaneie o código QR para realizar o pagamento!', 'brazilpays-plugin ');
+		$this->instructions 	  = __('Realize seu pagamento com cartão de crédito!', 'brazilpays-plugin ');
 	}
 
 	/**
@@ -87,7 +88,7 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 		$this->form_fields = array(
 			'enabled'            => array(
 				'title'       => __('Ativar/Desativar', 'brazilpays-plugin '),
-				'label'       => __('Ativar Pagamento em Pix - BrazilPays', 'brazilpays-plugin '),
+				'label'       => __('Ativar Pagamento no Cartão de Crédito - BrazilPays', 'brazilpays-plugin '),
 				'type'        => 'checkbox',
 				'description' => '',
 				'default'     => 'no',
@@ -104,14 +105,14 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 				'title'       => __('Título', 'brazilpays-plugin '),
 				'type'        => 'safe_text',
 				'description' => __('Título que o cliente verá na tela de pagamento', 'brazilpays-plugin '),
-				'default'     => __('Pix - Brazil Pays Pagamentos', 'brazilpays-plugin '),
+				'default'     => __('Cartão de Crédito - Brazil Pays Pagamentos', 'brazilpays-plugin '),
 				'desc_tip'    => true,
 			),
 			'description'        => array(
 				'title'       => __('Descrição', 'brazilpays-plugin '),
 				'type'        => 'textarea',
 				'description' => __('Descrição do método de pagamento', 'brazilpays-plugin '),
-				'default'     => __('Realize o pagamento através de Pix!', 'brazilpays-plugin '),
+				'default'     => __('Realize o pagamento utilizando o seu cartão de crédito!', 'brazilpays-plugin '),
 				'desc_tip'    => true,
 			),
 		);
@@ -183,7 +184,7 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 			if (!isset($_REQUEST['tab']) || 'checkout' !== $_REQUEST['tab']) {
 				return false;
 			}
-			if (!isset($_REQUEST['section']) || 'brazilpays-pix' !== $_REQUEST['section']) {
+			if (!isset($_REQUEST['section']) || 'brazilpays-credit' !== $_REQUEST['section']) {
 				return false;
 			}
 			// phpcs:enable WordPress.Security.NonceVerification
@@ -315,9 +316,8 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 	 * @param int $order_id Order ID.
 	 * @return array
 	 */
-	public function process_payment($order_id)
-	{
-        //buscando token já autenticado
+	public function process_payment($order_id){
+		//buscando token já autenticado
         $token = $this->authToken();
 
         if(empty($token)){
@@ -355,9 +355,15 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
         $fullName = $order->get_formatted_billing_full_name();
         $email = $order->get_billing_email();
         $phone = $order->get_billing_phone();
-        $gender = $order->get_meta('gender');
-        $birthDate = $order->get_meta('birth_date');
-        $cpfCnpj = $order->get_meta('cpf_cnpj');
+        $gender = $order->get_meta('card_gender');
+        $birthDate = $order->get_meta('card_birth_date');
+        $cpfCnpj = $order->get_meta('card_cpf_cnpj');
+		$cardNumber = $_POST['card_number'];
+		$cardName = $_POST['card_name'];
+		$cardMonth = $_POST['card_month'];
+		$cardYear = $_POST['card_year'];
+		$cardCvv = $_POST['card_cvv'];
+		$cardInstallments = $_POST['card_installments'];
 
 		$body_req = [
 			'profile' => [
@@ -374,11 +380,11 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 				'phone' => $phone,
 				'cpfOrCnpj' => $cpfCnpj,
 				'creditCard' => [
-					'cardNumber' => '0000000000000000',
-					'holderName' => '00',
-					'expireMonth' => '00',
-					'expireYear' => '0000',
-					'cvv' => '000'
+					'cardNumber' => $cardNumber,
+					'holderName' => $cardName,
+					'expireMonth' => $cardMonth,
+					'expireYear' => $cardYear,
+					'cvv' => $cardCvv
 				],
 				'gender' => $gender,
 				'birthDate' => $birthDate,
@@ -389,8 +395,8 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 			'invoice' => '',
 			'description' => $order_id,
 			'typeCharge' => '0',
-			'paymentMethod' => '0',
-			'installment' => 1,
+			'paymentMethod' => '2',
+			'installment' => $cardInstallments,
 			'valuesUsd' => [
 				'netValue' => $total,
 			],
@@ -405,11 +411,13 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 			'body' => json_encode($body_req)
 		);
 
-        $response = wp_remote_post($urlPix, $args);		
+        $response = wp_remote_post($urlPix, $args);
+
+		echo("<script>console.log('PHP: " . var_dump($response) . "');</script><br>");
 
         if($response['response']['code'] != 200){
             wc_add_notice(
-				__('Erro ao tentar realizar pagamento em pix', 'brazilpays-plugin'),
+				__('Erro ao tentar realizar com o cartão de crédito', 'brazilpays-plugin'),
                 'error'
             );
 
@@ -424,20 +432,15 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
             $data = json_decode($body, true);
 
             $order->update_meta_data('id_transacao', $data['data']['id']);
-            $order->update_meta_data('url_qrcode', $data['data']['qrCode']);
             
             $order->save();
 
-            //informando que o pagamento do pedido está pendente
-            $order->update_status(
-                $this->status_when_waiting,
-                __('BrazilPays: O pix foi emitido, mas o pagamento ainda não foi realizado.', 'brazilpays-plugin')
-            );
-
             //adicionando a chave pix como anotação do pedido
             $order->add_order_note(
-                __("Url qrcode pix:" . $data['data']['qrCode'], 'brazilpays-plugin')
+                __("Método de pagamento: Cartão de crédito", 'brazilpays-plugin')
             );
+
+			$order->payment_complete();
 
             // Remove cart.
             WC()->cart->empty_cart();
@@ -453,49 +456,10 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
         
 	}
 
-
-	public function brazilpays_check_payment_status(){
-		$order = wc_get_orders(array('status' => 'wc-pending'));
-		$token = $this->authToken();
-
-		$args = array(
-			'headers' => array( 'Authorization' => 'Bearer '. $token ),
-		);
-
-		foreach($order as $single_order){
-			$id_transaction = $single_order->get_meta('id_transacao');
-
-			if(!empty($id_transaction)){
-				$url = 'https://api-brazilpays.megaleios.com/api/v1/Charge/'.$id_transaction;
-
-				$response = wp_remote_get($url, $args);
-
-				//verificando resposta da requisição
-				if($response['response']['code'] != 200){
-					return ['result'=> 'fail'];
-				}
-
-				if(!is_wp_error($response)){
-
-					$body = wp_remote_retrieve_body($response);
-		
-					$data_request = json_decode($body, true);
-		
-					if($data_request['data']['paymentStatus'] == "1"){
-						$single_order->update_meta_data('pago', true);
-						$single_order->update_status('completed');
-					}else{
-						$single_order->update_status('pending');
-					}
-				}
-			}
-		}
-	}
-	
 	/**
 	 * Função responsável por fazer a autenticação do token para realizar todas as outras requisições no plugin.
 	 */
-    public function authToken(){
+	public function authToken(){
 
         $url = 'https://api-brazilpays.megaleios.com/api/v1/Merchant/External/Token';
         
@@ -564,30 +528,18 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 			//retornando token
             return $dolar;
         }
-
 	}
 
 	/**
 	 * Output for the order received page.
 	 */
-	public function thankyou_page($order_id)
+	public function thankyou_page()
 	{
-		//buscando informações do pedido
-		$order = wc_get_order($order_id);
-		$order_data = $order->get_meta('url_qrcode');
-
-		//apresentando qr_code
-		$finalImage = '<img src="data:image/png;base64,' .base64_encode($order_data) .'" id="imageQRCode" alt="QR Code" class="qrcode" style="display: block;margin-left: auto;margin-right: auto;"/>';
-		echo $finalImage;
-	
 		echo '<div style="font-size: 20px;color: #303030;text-align: center;">';
-		echo wp_kses_post(wpautop(wptexturize($this->instructions)));
-
-		echo 'Ou copie e cole a seguinte chave pix em seu aplicativo de banco para realizar o pagamento:';
-		echo '<blockquote>' . $order_data . '</blockquote>';
+		echo '<h3>O pagamento foi recebido com sucesso, muito obrigado!</h3>';
 		echo '</div>';
 	}
-
+	
 	/**
 	 * Add content to the WC emails.
 	 *
@@ -601,5 +553,4 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 			echo wp_kses_post(wpautop(wptexturize($this->instructions)) . PHP_EOL);
 		}
 	}
-
 }

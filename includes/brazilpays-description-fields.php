@@ -164,18 +164,18 @@ function brazilpays_description_fields( $description, $payment_id) {
                 'label' => __('Número de Parcelas: ', 'brazilpays-plugin'),
                 'required' => true,
                 'options' => array(
-                    '1' => __('1x de U$', 'brazilpays-plugin') . number_format((float)($total_amount), 2, '.', ''),
-                    '2' => __('2x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 2), 2, '.', ''),
-                    '3' => __('3x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 3), 2, '.', ''),
-                    '4' => __('4x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 4), 2, '.', ''),
-                    '5' => __('5x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 5), 2, '.', ''),
-                    '6' => __('6x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 6), 2, '.', ''),
-                    '7' => __('7x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 7), 2, '.', ''),
-                    '8' => __('8x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 8), 2, '.', ''),
-                    '9' => __('9x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 9), 2, '.', ''),
-                    '10' => __('10x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 10), 2, '.', ''),
-                    '11' => __('11x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 11), 2, '.', ''),
-                    '12' => __('12x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 12), 2, '.', ''),
+                    1 => __('1x de U$', 'brazilpays-plugin') . number_format((float)($total_amount), 2, '.', ''),
+                    2 => __('2x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 2), 2, '.', ''),
+                    3 => __('3x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 3), 2, '.', ''),
+                    4 => __('4x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 4), 2, '.', ''),
+                    5 => __('5x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 5), 2, '.', ''),
+                    6 => __('6x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 6), 2, '.', ''),
+                    7 => __('7x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 7), 2, '.', ''),
+                    8 => __('8x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 8), 2, '.', ''),
+                    9 => __('9x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 9), 2, '.', ''),
+                    10 => __('10x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 10), 2, '.', ''),
+                    11 => __('11x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 11), 2, '.', ''),
+                    12 => __('12x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 12), 2, '.', ''),
                 ),
             )
         );
@@ -212,31 +212,31 @@ function brazilpays_description_fields_validation(){
             wc_add_notice('Por favor informe um gênero!', 'error');
         }
 
-        if(!isset($_POST['card_birth_date']) || empty($_POST['birth_date'])){
+        if(!isset($_POST['card_birth_date']) || empty($_POST['card_birth_date'])){
             wc_add_notice('Por favor informe uma data de nascimento!', 'error');
         }
 
-        if(!isset($_POST['card_cpf_cnpj']) || empty($_POST['cpf_cnpj'])){
+        if(!isset($_POST['card_cpf_cnpj']) || empty($_POST['card_cpf_cnpj'])){
             wc_add_notice('Por favor informe um CPF ou CNPJ válido!', 'error');
         }
 
-        if(!isset($_POST['card_number']) || empty($_POST['cpf_cnpj'])){
+        if(!isset($_POST['card_number']) || empty($_POST['card_number'])){
             wc_add_notice('Por favor informe o número do cartão!', 'error');
         }
 
-        if(!isset($_POST['card_name']) || empty($_POST['cpf_cnpj'])){
+        if(!isset($_POST['card_name']) || empty($_POST['card_name'])){
             wc_add_notice('Por favor informe o nome escrito no cartão!', 'error');
         }
 
-        if(!isset($_POST['card_month']) || empty($_POST['cpf_cnpj'])){
+        if(!isset($_POST['card_month']) || empty($_POST['card_month'])){
             wc_add_notice('Por favor informe o mês de vencimento do cartão!', 'error');
         }
 
-        if(!isset($_POST['card_year']) || empty($_POST['cpf_cnpj'])){
+        if(!isset($_POST['card_year']) || empty($_POST['card_year'])){
             wc_add_notice('Por favor informe o ano de vencimento do cartão!', 'error');
         }
 
-        if(!isset($_POST['card_cvv']) || empty($_POST['cpf_cnpj'])){
+        if(!isset($_POST['card_cvv']) || empty($_POST['card_cvv'])){
             wc_add_notice('Por favor informe o CVV do cartão!', 'error');
         }
     }
