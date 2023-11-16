@@ -17,19 +17,6 @@ function brazilpays_description_fields( $description, $payment_id) {
         ob_start();
 
         echo '<div style="display: block; width: 100%px !important; height: auto;">';
-
-        echo '<div style="display: flex; width: 100%px !important; height: auto;">';
-        
-        woocommerce_form_field('birth_date', array(
-                'type' => 'text',
-                'class' => array('form-row', 'form-row-wide'),
-                'label' => __('Data de Nascimento: ', 'brazilpays-plugin'),
-                'placeholder' => __('(dd/mm/yyyy)', 'brazilpays-plugin'),
-                'required' => true,
-            )
-        );
-
-        echo '</div>';
         
         woocommerce_form_field('cpf_cnpj', array(
                 'type' => 'text',
@@ -52,19 +39,6 @@ function brazilpays_description_fields( $description, $payment_id) {
         ob_start();
 
         echo '<div style="display: block; width: 100%px !important; height: auto;">';
-
-        echo '<div style="display: flex; width: 100%px !important; height: auto;">';
-        
-        woocommerce_form_field('card_birth_date', array(
-                'type' => 'text',
-                'class' => array('form-row', 'form-row-wide'),
-                'label' => __('Data de Nascimento: ', 'brazilpays-plugin'),
-                'placeholder' => __('(dd/mm/yyyy)', 'brazilpays-plugin'),
-                'required' => true,
-            )
-        );
-
-        echo '</div>';
         
         woocommerce_form_field('card_cpf_cnpj', array(
                 'type' => 'text',
@@ -168,21 +142,12 @@ function brazilpays_description_fields( $description, $payment_id) {
 function brazilpays_description_fields_validation(){
     if($_POST['payment_method'] === 'brazilpays-pix'){
 
-        if(!isset($_POST['birth_date']) || empty($_POST['birth_date'])){
-            wc_add_notice('Por favor informe uma data de nascimento!', 'error');
-        }
-
         if(!isset($_POST['cpf_cnpj']) || empty($_POST['cpf_cnpj'])){
             wc_add_notice('Por favor informe um CPF ou CNPJ válido!', 'error');
         }
     }
 
-
     if($_POST['payment_method'] === 'brazilpays-credit'){
-
-        if(!isset($_POST['card_birth_date']) || empty($_POST['card_birth_date'])){
-            wc_add_notice('Por favor informe uma data de nascimento!', 'error');
-        }
 
         if(!isset($_POST['card_cpf_cnpj']) || empty($_POST['card_cpf_cnpj'])){
             wc_add_notice('Por favor informe um CPF ou CNPJ válido!', 'error');
@@ -212,18 +177,12 @@ function brazilpays_description_fields_validation(){
 }
 
 function brazilpays_checkout_update_order_meta($order_id){
-    if(isset($_POST['birth_date']) || !empty($_POST['birth_date'])){
-        if(isset($_POST['cpf_cnpj']) || !empty($_POST['cpf_cnpj'])){
-            update_post_meta($order_id, 'birth_date', $_POST['birth_date']);
-            update_post_meta($order_id, 'cpf_cnpj', $_POST['cpf_cnpj']);
-        }
+    if(isset($_POST['cpf_cnpj']) || !empty($_POST['cpf_cnpj'])){
+        update_post_meta($order_id, 'cpf_cnpj', $_POST['cpf_cnpj']);
     }
     
-
-    if(isset($_POST['card_birth_date']) || !empty($_POST['card_birth_date'])){
-        if(isset($_POST['card_cpf_cnpj']) || !empty($_POST['card_cpf_cnpj'])){
-            update_post_meta($order_id, 'card_birth_date', $_POST['card_birth_date']);
-            update_post_meta($order_id, 'card_cpf_cnpj', $_POST['card_cpf_cnpj']);
-        }
+    if(isset($_POST['card_cpf_cnpj']) || !empty($_POST['card_cpf_cnpj'])){
+        update_post_meta($order_id, 'card_cpf_cnpj', $_POST['card_cpf_cnpj']);
     }
+    
 }

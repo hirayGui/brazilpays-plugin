@@ -355,7 +355,6 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
         $fullName = $order->get_formatted_billing_full_name();
         $email = $order->get_billing_email();
         $phone = $order->get_billing_phone();
-        $birthDate = $order->get_meta('birth_date');
         $cpfCnpj = $order->get_meta('cpf_cnpj');
 
 		$body_req = [
@@ -380,7 +379,7 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 					'cvv' => '000'
 				],
 				'gender' => 'O',
-				'birthDate' => $birthDate,
+				'birthDate' => '20/04/1977',
 			],
 			'exchange' => $cotacao_dolar['cotacao'],
 			'usedExchange' => $cotacao_dolar['usedExchange'],

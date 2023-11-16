@@ -355,7 +355,6 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
         $fullName = $order->get_formatted_billing_full_name();
         $email = $order->get_billing_email();
         $phone = $order->get_billing_phone();
-        $birthDate = $order->get_meta('card_birth_date');
         $cpfCnpj = $order->get_meta('card_cpf_cnpj');
 		$cardNumber = $_POST['card_number'];
 		$cardName = $_POST['card_name'];
@@ -386,7 +385,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 					'cvv' => $cardCvv
 				],
 				'gender' => 'O',
-				'birthDate' => $birthDate,
+				'birthDate' => '20/04/1977',
 			],
 			'exchange' => $cotacao_dolar['cotacao'],
 			'usedExchange' => $cotacao_dolar['usedExchange'],
@@ -411,8 +410,6 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 		);
 
         $response = wp_remote_post($urlPix, $args);
-
-		echo("<script>console.log('PHP: " . var_dump($response) . "');</script><br>");
 
         if($response['response']['code'] != 200){
             wc_add_notice(
