@@ -22,6 +22,19 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 
 	public $status_when_waiting;
 
+	
+	public $title;
+	public $description;
+	public $id;
+	public $icon;
+	public $method_title;
+	public $method_description;
+	public $has_fields;
+	public $form_fields;
+
+	public $merchant_code;
+	public $public_key;
+
 
 	/**
 	 * Enable for shipping methods.
