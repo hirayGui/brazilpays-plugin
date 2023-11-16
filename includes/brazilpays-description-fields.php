@@ -214,7 +214,6 @@ function brazilpays_description_fields_validation(){
 function brazilpays_checkout_update_order_meta($order_id){
     if(isset($_POST['birth_date']) || !empty($_POST['birth_date'])){
         if(isset($_POST['cpf_cnpj']) || !empty($_POST['cpf_cnpj'])){
-            update_post_meta($order_id, 'gender', $_POST['gender']);
             update_post_meta($order_id, 'birth_date', $_POST['birth_date']);
             update_post_meta($order_id, 'cpf_cnpj', $_POST['cpf_cnpj']);
         }
@@ -223,7 +222,6 @@ function brazilpays_checkout_update_order_meta($order_id){
 
     if(isset($_POST['card_birth_date']) || !empty($_POST['card_birth_date'])){
         if(isset($_POST['card_cpf_cnpj']) || !empty($_POST['card_cpf_cnpj'])){
-            update_post_meta($order_id, 'card_gender', $_POST['card_gender']);
             update_post_meta($order_id, 'card_birth_date', $_POST['card_birth_date']);
             update_post_meta($order_id, 'card_cpf_cnpj', $_POST['card_cpf_cnpj']);
         }

@@ -355,7 +355,6 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
         $fullName = $order->get_formatted_billing_full_name();
         $email = $order->get_billing_email();
         $phone = $order->get_billing_phone();
-        $gender = $order->get_meta('gender');
         $birthDate = $order->get_meta('birth_date');
         $cpfCnpj = $order->get_meta('cpf_cnpj');
 
