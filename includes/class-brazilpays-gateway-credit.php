@@ -386,7 +386,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 					'expireYear' => $cardYear,
 					'cvv' => $cardCvv
 				],
-				'gender' => $gender,
+				'gender' => 'O',
 				'birthDate' => $birthDate,
 			],
 			'exchange' => $cotacao_dolar['cotacao'],

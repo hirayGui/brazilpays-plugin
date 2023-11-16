@@ -380,7 +380,7 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 					'expireYear' => '0000',
 					'cvv' => '000'
 				],
-				'gender' => $gender,
+				'gender' => 'O',
 				'birthDate' => $birthDate,
 			],
 			'exchange' => $cotacao_dolar['cotacao'],

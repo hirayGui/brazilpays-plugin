@@ -19,19 +19,6 @@ function brazilpays_description_fields( $description, $payment_id) {
         echo '<div style="display: block; width: 100%px !important; height: auto;">';
 
         echo '<div style="display: flex; width: 100%px !important; height: auto;">';
-        woocommerce_form_field('gender', array(
-                'type' => 'select',
-                'class' => array('form-row', 'form-row-wide'),
-                'label' => __('Especifique o gênero: ', 'brazilpays-plugin'),
-                'required' => true,
-                'options' => array(
-                    'none' => __('Selecionar gênero', 'brazilpays-plugin'),
-                    'M' => __('Masculino', 'brazilpays-plugin'),
-                    'F' => __('Feminino', 'brazilpays-plugin'),
-                    'O' => __('Outro', 'brazilpays-plugin')
-                ),
-            )
-        );
         
         woocommerce_form_field('birth_date', array(
                 'type' => 'text',
@@ -67,19 +54,6 @@ function brazilpays_description_fields( $description, $payment_id) {
         echo '<div style="display: block; width: 100%px !important; height: auto;">';
 
         echo '<div style="display: flex; width: 100%px !important; height: auto;">';
-        woocommerce_form_field('card_gender', array(
-                'type' => 'select',
-                'class' => array('form-row', 'form-row-wide'),
-                'label' => __('Especifique o gênero: ', 'brazilpays-plugin'),
-                'required' => true,
-                'options' => array(
-                    'none' => __('Selecionar gênero', 'brazilpays-plugin'),
-                    'M' => __('Masculino', 'brazilpays-plugin'),
-                    'F' => __('Feminino', 'brazilpays-plugin'),
-                    'O' => __('Outro', 'brazilpays-plugin')
-                ),
-            )
-        );
         
         woocommerce_form_field('card_birth_date', array(
                 'type' => 'text',
@@ -193,9 +167,6 @@ function brazilpays_description_fields( $description, $payment_id) {
 
 function brazilpays_description_fields_validation(){
     if($_POST['payment_method'] === 'brazilpays-pix'){
-        if(!isset($_POST['gender'])){
-            wc_add_notice('Por favor informe um gênero!', 'error');
-        }
 
         if(!isset($_POST['birth_date']) || empty($_POST['birth_date'])){
             wc_add_notice('Por favor informe uma data de nascimento!', 'error');
@@ -208,9 +179,6 @@ function brazilpays_description_fields_validation(){
 
 
     if($_POST['payment_method'] === 'brazilpays-credit'){
-        if(!isset($_POST['card_gender'])){
-            wc_add_notice('Por favor informe um gênero!', 'error');
-        }
 
         if(!isset($_POST['card_birth_date']) || empty($_POST['card_birth_date'])){
             wc_add_notice('Por favor informe uma data de nascimento!', 'error');
@@ -244,23 +212,20 @@ function brazilpays_description_fields_validation(){
 }
 
 function brazilpays_checkout_update_order_meta($order_id){
-    if(isset($_POST['gender']) || !empty($_POST['gender'])){
-        if(isset($_POST['birth_date']) || !empty($_POST['birth_date'])){
-            if(isset($_POST['cpf_cnpj']) || !empty($_POST['cpf_cnpj'])){
-                update_post_meta($order_id, 'gender', $_POST['gender']);
-                update_post_meta($order_id, 'birth_date', $_POST['birth_date']);
-                update_post_meta($order_id, 'cpf_cnpj', $_POST['cpf_cnpj']);
-            }
+    if(isset($_POST['birth_date']) || !empty($_POST['birth_date'])){
+        if(isset($_POST['cpf_cnpj']) || !empty($_POST['cpf_cnpj'])){
+            update_post_meta($order_id, 'gender', $_POST['gender']);
+            update_post_meta($order_id, 'birth_date', $_POST['birth_date']);
+            update_post_meta($order_id, 'cpf_cnpj', $_POST['cpf_cnpj']);
         }
     }
+    
 
-    if(isset($_POST['card_gender']) || !empty($_POST['card_gender'])){
-        if(isset($_POST['card_birth_date']) || !empty($_POST['card_birth_date'])){
-            if(isset($_POST['card_cpf_cnpj']) || !empty($_POST['card_cpf_cnpj'])){
-                update_post_meta($order_id, 'card_gender', $_POST['card_gender']);
-                update_post_meta($order_id, 'card_birth_date', $_POST['card_birth_date']);
-                update_post_meta($order_id, 'card_cpf_cnpj', $_POST['card_cpf_cnpj']);
-            }
+    if(isset($_POST['card_birth_date']) || !empty($_POST['card_birth_date'])){
+        if(isset($_POST['card_cpf_cnpj']) || !empty($_POST['card_cpf_cnpj'])){
+            update_post_meta($order_id, 'card_gender', $_POST['card_gender']);
+            update_post_meta($order_id, 'card_birth_date', $_POST['card_birth_date']);
+            update_post_meta($order_id, 'card_cpf_cnpj', $_POST['card_cpf_cnpj']);
         }
     }
 }
