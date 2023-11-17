@@ -67,6 +67,10 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 		add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
 		add_action('woocommerce_thankyou_' . $this->id, array($this, 'thankyou_page'));
+
+		add_filter('woocommerce_gateway_description', array($this, 'brazilpays_description_fields_credit'), 20, 2);
+		add_action('woocommerce_checkout_process', array($this, 'brazilpays_description_fields_validation_credit'));
+		// add_action('woocommerce_checkout_update_order_meta', 'brazilpays_checkout_update_order_meta', 10, 1);
 		
 
 		//função verifica se pagamentos forma efetuados
@@ -368,7 +372,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
         $fullName = $order->get_formatted_billing_full_name();
         $email = $order->get_billing_email();
         $phone = $order->get_billing_phone();
-        $cpfCnpj = $order->get_meta('card_cpf_cnpj');
+        $cpfCnpj = $_POST['card_cpf_cnpj'];
 		$cardNumber = $_POST['card_number'];
 		$cardName = $_POST['card_name'];
 		$cardMonth = $_POST['card_month'];
@@ -430,9 +434,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
                 'error'
             );
 
-            return [
-                'result' => 'fail',
-            ];
+            return ['result' => 'fail'];
         }
 
         if(!is_wp_error($response)){
@@ -562,4 +564,199 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 			echo wp_kses_post(wpautop(wptexturize($this->instructions)) . PHP_EOL);
 		}
 	}
+
+	public function getParcelas($token, $total_amount){
+
+		$url = 'https://api-brazilpays.megaleios.com/api/v1/Charge/Calculate';
+
+		$args = array(
+			'headers' => array(
+				'Authorization' => 'Bearer '. $token,
+				'Content-Type' => 'application/json'
+			),
+			'body' => json_encode(array('amount' => $total_amount)),
+		);
+
+		$response = wp_remote_post($url, $args);
+
+		//verificando resposta da requisição
+        if(wp_remote_retrieve_response_code($response) != 200){
+            return ['result'=> 'fail'];
+        }
+		
+		if(!is_wp_error($response)){
+			$parcelas_total = array();
+			$body = wp_remote_retrieve_body($response);
+
+			$data_request = json_decode($body, true);
+			$parcelas_total = $data_request['data']['creditCard']['installments'];
+
+			return $parcelas_total;
+		}
+	}
+
+	
+	public function brazilpays_description_fields_credit( $description, $payment_id) {
+		$parcelas = array();
+		$total_amount = $this->get_order_total();
+		$token = $this->authToken();
+		$parcelas = $this->getParcelas($token, $total_amount);
+
+
+		$options = array();
+
+		foreach($parcelas as $parcela){
+			if(!empty($parcela['amount'])){
+				$valor = $parcela['amount'];
+			}
+			if(!empty($parcela['qtInstallment'])){
+				$qnt = $parcela['qtInstallment'];
+			}
+			$options[(int)$qnt] = $qnt.'x de R$'. number_format((float)($valor), 2, '.', '');
+		}
+		/*
+		* Apresentando campos para o método de pagamento com Cartão de Crédito
+		*/    
+		if($payment_id === 'brazilpays-credit'){
+			ob_start();
+
+			echo '<div style="display: block; width: 100%px !important; height: auto;">';
+
+			echo '<div style="display: block; width: 100%px !important; height: auto;">';
+			woocommerce_form_field('card_installments', array(
+				'type' => 'radio',
+				'class' => array('form-row'),
+				'label' => __('Número de Parcelas: ', 'brazilpays-plugin'),
+				'required' => true,
+				'options' => $options,
+				)
+			);
+
+			echo '</div>';
+			// array(
+			// 	1 => __('1x de U$', 'brazilpays-plugin') . number_format((float)($total_amount), 2, '.', ''),
+			// 	2 => __('2x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 2), 2, '.', ''),
+			// 	3 => __('3x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 3), 2, '.', ''),
+			// 	4 => __('4x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 4), 2, '.', ''),
+			// 	5 => __('5x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 5), 2, '.', ''),
+			// 	6 => __('6x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 6), 2, '.', ''),
+			// 	7 => __('7x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 7), 2, '.', ''),
+			// 	8 => __('8x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 8), 2, '.', ''),
+			// 	9 => __('9x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 9), 2, '.', ''),
+			// 	10 => __('10x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 10), 2, '.', ''),
+			// 	11 => __('11x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 11), 2, '.', ''),
+			// 	12 => __('12x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 12), 2, '.', ''),
+			// 	)
+			
+			woocommerce_form_field('card_number', array(
+					'type' => 'text',
+					'class' => array('form-row'),
+					'label' => __('Informe o número do cartão: ', 'brazilpays-plugin'),
+					'required' => true,
+				)
+			);
+
+			woocommerce_form_field('card_name', array(
+					'type' => 'text',
+					'class' => array('form-row'),
+					'label' => __('Informe o nome que está no cartão: ', 'brazilpays-plugin'),
+					'required' => true,
+				)
+			);
+
+			echo '<div style="display: flex; width: 100%px !important; height: auto;">';
+
+			woocommerce_form_field('card_month', array(
+					'type' => 'select',
+					'class' => array('form-row'),
+					'label' => __('Mês de vencimento: ', 'brazilpays-plugin'),
+					'required' => true,
+					'options' => array(
+						'1' => __('01', 'brazilpays-plugin'),
+						'2' => __('02', 'brazilpays-plugin'),
+						'3' => __('03', 'brazilpays-plugin'),
+						'4' => __('04', 'brazilpays-plugin'),
+						'5' => __('05', 'brazilpays-plugin'),
+						'6' => __('06', 'brazilpays-plugin'),
+						'7' => __('07', 'brazilpays-plugin'),
+						'8' => __('08', 'brazilpays-plugin'),
+						'9' => __('09', 'brazilpays-plugin'),
+						'10' => __('10', 'brazilpays-plugin'),
+						'11' => __('11', 'brazilpays-plugin'),
+						'12' => __('12', 'brazilpays-plugin'),
+					),
+				)
+			);
+
+			woocommerce_form_field('card_year', array(
+					'type' => 'text',
+					'class' => array('form-row'),
+					'label' => __('Ano de vencimento: ', 'brazilpays-plugin'),
+					'required' => true,
+				)
+			);
+
+			woocommerce_form_field('card_cvv', array(
+					'type' => 'text',
+					'class' => array('form-row'),
+					'label' => __('CVV: ', 'brazilpays-plugin'),
+					'required' => true,
+				)
+			);
+
+			echo '</div>';
+
+			woocommerce_form_field('card_cpf_cnpj', array(
+				'type' => 'text',
+				'class' => array('form-row'),
+				'label' => __('CPF ou CNPJ: ', 'brazilpays-plugin'),
+				'required' => true,
+				)
+			);
+			
+			echo '</div>';
+
+			$description .= ob_get_clean();
+		}
+
+		return $description;
+	}
+
+	public function brazilpays_description_fields_validation_credit(){
+		if($_POST['payment_method'] === 'brazilpays-credit'){
+
+			if(!isset($_POST['card_cpf_cnpj']) && empty($_POST['card_cpf_cnpj'])){
+				wc_add_notice('Por favor informe um CPF ou CNPJ válido!', 'error');
+			}
+
+			if(!isset($_POST['card_number']) && empty($_POST['card_number'])){
+				wc_add_notice('Por favor informe o número do cartão!', 'error');
+			}
+
+			if(!isset($_POST['card_name']) && empty($_POST['card_name'])){
+				wc_add_notice('Por favor informe o nome escrito no cartão!', 'error');
+			}
+
+			if(!isset($_POST['card_month']) && empty($_POST['card_month'])){
+				wc_add_notice('Por favor informe o mês de vencimento do cartão!', 'error');
+			}
+
+			if(!isset($_POST['card_year']) && empty($_POST['card_year'])){
+				wc_add_notice('Por favor informe o ano de vencimento do cartão!', 'error');
+			}
+
+			if(!isset($_POST['card_cvv']) && empty($_POST['card_cvv'])){
+				wc_add_notice('Por favor informe o CVV do cartão!', 'error');
+			}
+		}
+	
+	}
+
+	// public function brazilpays_checkout_update_order_meta_credit($order_id){
+		
+	// 	if(isset($_POST['card_cpf_cnpj']) || !empty($_POST['card_cpf_cnpj'])){
+	// 		update_post_meta($order_id, 'card_cpf_cnpj', $_POST['card_cpf_cnpj']);
+	// 	}
+		
+	// }
 }
