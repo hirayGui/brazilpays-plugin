@@ -362,7 +362,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
             ];
 		}
 
-        $urlPix = 'https://api-brazilpays.megaleios.com/api/v1/Charge';
+        $urlCard = 'https://api-brazilpays.megaleios.com/api/v1/Charge';
 
         $zipCode = $order->get_billing_postcode();
         $address = $order->get_billing_address_1();
@@ -379,6 +379,8 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 		$cardYear = $_POST['card_year'];
 		$cardCvv = $_POST['card_cvv'];
 		$cardInstallments = $_POST['card_installments'];
+		$gender = $_POST['card_gender'];
+		$birthDate = $_POST['card_birth_date'];
 
 		$body_req = [
 			'profile' => [
@@ -388,7 +390,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 				'cityName' => $cityName,
 				'stateName' => $stateName,
 				'stateUf' => $stateName,
-				'neighborhood' => $zipCode,
+				'neighborhood' => 'bairro',
 				'complement' => $complement,
 				'fullName' => $fullName,
 				'email' => $email,
@@ -401,15 +403,15 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 					'expireYear' => $cardYear,
 					'cvv' => $cardCvv
 				],
-				'gender' => 'O',
-				'birthDate' => '20/04/1977',
+				'gender' => $gender,
+				'birthDate' => $birthDate,
 			],
 			'exchange' => $cotacao_dolar['cotacao'],
 			'usedExchange' => $cotacao_dolar['usedExchange'],
 			'baseChargeId' => '',
 			'invoice' => '',
 			'description' => $order_id,
-			'typeCharge' => '0',
+			'typeCharge' => '2',
 			'paymentMethod' => '2',
 			'installment' => $cardInstallments,
 			'valuesUsd' => [
@@ -418,27 +420,42 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 			'urlWebHook' => ''
 		];
 
-		$args = array(
+		$argscard = array(
+			'method' => 'POST',
 			'headers' => array(
-					'Authorization' => 'Bearer '. $token,
-					'Content-Type' => 'application/json'
-				),
-			'body' => json_encode($body_req)
+				'Authorization' => 'Bearer '. $token,
+				'Content-Type' => 'application/json',
+				'Connection' => 'keep-alive',
+				'Accept-Encoding' => 'gzip, deflate, br',
+				'Accept' => 'application/json'
+			),
+			'body' => json_encode($body_req),
+			'timeout' => 90
 		);
 
-        $response = wp_remote_post($urlPix, $args);
+        $res = wp_remote_post($urlCard, $argscard);
 
-        if($response['response']['code'] != 200){
+        if(wp_remote_retrieve_response_code($res) != 200){
             wc_add_notice(
-				__('Erro ao tentar realizar com o cartão de crédito', 'brazilpays-plugin'),
+				__('Erro ao tentar realizar pagamento com o cartão de crédito', 'brazilpays-plugin'),
                 'error'
             );
-
             return ['result' => 'fail'];
         }
 
-        if(!is_wp_error($response)){
-            $body = wp_remote_retrieve_body($response);
+		if(wp_remote_retrieve_response_code($res) == 400){
+            wc_add_notice(
+				__('Um dos dados informados está incorreto!', 'brazilpays-plugin'),
+                'error'
+            );
+            return ['result' => 'fail'];
+        }
+
+        if(!is_wp_error($res)){
+			$body = array();
+			$data = array();
+
+            $body = wp_remote_retrieve_body($res);
 
             $data = json_decode($body, true);
 
@@ -521,7 +538,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 		$response = wp_remote_post($url, $args);
 
 		//verificando resposta da requisição
-        if($response['response']['code'] != 200){
+        if(wp_remote_retrieve_response_code($response) != 200){
             return ['result'=> 'fail'];
         }
 
@@ -611,8 +628,11 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 			}
 			if(!empty($parcela['qtInstallment'])){
 				$qnt = $parcela['qtInstallment'];
+				$qntInt = $parcela['qtInstallment'];
+				settype($qntInt, 'integer');
 			}
-			$options[(int)$qnt] = $qnt.'x de R$'. number_format((float)($valor), 2, '.', '');
+
+			$options[$qntInt] = $qnt.'x de R$'. number_format((float)($valor), 2, '.', '');
 		}
 		/*
 		* Apresentando campos para o método de pagamento com Cartão de Crédito
@@ -620,34 +640,21 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 		if($payment_id === 'brazilpays-credit'){
 			ob_start();
 
-			echo '<div style="display: block; width: 100%px !important; height: auto;">';
+			echo '<div style="display: flex; width: 100%!important; height: auto;">';
 
-			echo '<div style="display: block; width: 100%px !important; height: auto;">';
+			echo '<div style="display: block; width: 100% !important; height: auto;">';
+			echo '<label for="card_installments_1" class="">Número de Parcelas: &nbsp;<abbr class="required" title="obrigatório">*</abbr></label>';
 			woocommerce_form_field('card_installments', array(
 				'type' => 'radio',
 				'class' => array('form-row'),
-				'label' => __('Número de Parcelas: ', 'brazilpays-plugin'),
 				'required' => true,
 				'options' => $options,
 				)
 			);
 
 			echo '</div>';
-			// array(
-			// 	1 => __('1x de U$', 'brazilpays-plugin') . number_format((float)($total_amount), 2, '.', ''),
-			// 	2 => __('2x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 2), 2, '.', ''),
-			// 	3 => __('3x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 3), 2, '.', ''),
-			// 	4 => __('4x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 4), 2, '.', ''),
-			// 	5 => __('5x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 5), 2, '.', ''),
-			// 	6 => __('6x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 6), 2, '.', ''),
-			// 	7 => __('7x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 7), 2, '.', ''),
-			// 	8 => __('8x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 8), 2, '.', ''),
-			// 	9 => __('9x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 9), 2, '.', ''),
-			// 	10 => __('10x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 10), 2, '.', ''),
-			// 	11 => __('11x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 11), 2, '.', ''),
-			// 	12 => __('12x de U$', 'brazilpays-plugin') . number_format((float)($total_amount / 12), 2, '.', ''),
-			// 	)
 			
+			echo '<div style="display: block; width: 100% !important; height: auto;">';
 			woocommerce_form_field('card_number', array(
 					'type' => 'text',
 					'class' => array('form-row'),
@@ -663,8 +670,6 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 					'required' => true,
 				)
 			);
-
-			echo '<div style="display: flex; width: 100%px !important; height: auto;">';
 
 			woocommerce_form_field('card_month', array(
 					'type' => 'select',
@@ -704,8 +709,6 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 				)
 			);
 
-			echo '</div>';
-
 			woocommerce_form_field('card_cpf_cnpj', array(
 				'type' => 'text',
 				'class' => array('form-row'),
@@ -713,7 +716,30 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 				'required' => true,
 				)
 			);
-			
+
+			woocommerce_form_field('card_gender', array(
+				'type' => 'select',
+				'class' => array('form-row'),
+				'label' => __('Gênero: ', 'brazilpays-plugin'),
+				'required' => true,
+				'options' => array(
+					'M' => 'Masculino',
+					'F' => 'Feminino'
+					)
+				)
+			);
+
+			woocommerce_form_field('card_birth_date', array(
+				'type' => 'text',
+				'class' => array('form-row'),
+				'label' => __('Data de nascimento: ', 'brazilpays-plugin'),
+				'placeholder' => __('(dd/mm/yyyy)', 'brazilpays-plugin'),
+				'required' => true,
+				)
+			);
+
+			echo '</div>';
+
 			echo '</div>';
 
 			$description .= ob_get_clean();
@@ -725,28 +751,36 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 	public function brazilpays_description_fields_validation_credit(){
 		if($_POST['payment_method'] === 'brazilpays-credit'){
 
-			if(!isset($_POST['card_cpf_cnpj']) && empty($_POST['card_cpf_cnpj'])){
+			if(isset($_POST['card_cpf_cnpj']) && empty($_POST['card_cpf_cnpj'])){
 				wc_add_notice('Por favor informe um CPF ou CNPJ válido!', 'error');
 			}
 
-			if(!isset($_POST['card_number']) && empty($_POST['card_number'])){
+			if(isset($_POST['card_number']) && empty($_POST['card_number'])){
 				wc_add_notice('Por favor informe o número do cartão!', 'error');
 			}
 
-			if(!isset($_POST['card_name']) && empty($_POST['card_name'])){
+			if(isset($_POST['card_name']) && empty($_POST['card_name'])){
 				wc_add_notice('Por favor informe o nome escrito no cartão!', 'error');
 			}
 
-			if(!isset($_POST['card_month']) && empty($_POST['card_month'])){
+			if(isset($_POST['card_month']) && empty($_POST['card_month'])){
 				wc_add_notice('Por favor informe o mês de vencimento do cartão!', 'error');
 			}
 
-			if(!isset($_POST['card_year']) && empty($_POST['card_year'])){
+			if(isset($_POST['card_year']) && empty($_POST['card_year'])){
 				wc_add_notice('Por favor informe o ano de vencimento do cartão!', 'error');
 			}
 
-			if(!isset($_POST['card_cvv']) && empty($_POST['card_cvv'])){
+			if(isset($_POST['card_cvv']) && empty($_POST['card_cvv'])){
 				wc_add_notice('Por favor informe o CVV do cartão!', 'error');
+			}
+
+			if(isset($_POST['card_gender']) && empty($_POST['card_gender'])){
+				wc_add_notice('Por favor informe o gênero!', 'error');
+			}
+
+			if(isset($_POST['card_birth_date']) && empty($_POST['card_birth_date'])){
+				wc_add_notice('Por favor informe a data de nascimento!', 'error');
 			}
 		}
 	
