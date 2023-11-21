@@ -366,6 +366,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 
         $zipCode = $order->get_billing_postcode();
         $address = $order->get_billing_address_1();
+		$number = preg_replace("/[^0-9]/", "", $address);
         $cityName = $order->get_billing_city();
         $stateName = $order->get_billing_state();
 		$complement = $order->get_billing_address_2();
@@ -382,11 +383,13 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 		$gender = $_POST['card_gender'];
 		$birthDate = $_POST['card_birth_date'];
 
+		// $date = date('d/m/y', strtotime($birthDate));
+
 		$body_req = [
 			'profile' => [
 				'zipCode' => $zipCode,
 				'streetAddress' => $address,
-				'number' => $address,
+				'number' => $number,
 				'cityName' => $cityName,
 				'stateName' => $stateName,
 				'stateUf' => $stateName,
@@ -409,7 +412,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 			'exchange' => $cotacao_dolar['cotacao'],
 			'usedExchange' => $cotacao_dolar['usedExchange'],
 			'baseChargeId' => '',
-			'invoice' => '',
+			'invoice' => $order_id,
 			'description' => $order_id,
 			'typeCharge' => '2',
 			'paymentMethod' => '2',
@@ -419,6 +422,8 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 			],
 			'urlWebHook' => ''
 		];
+
+		echo("<script>console.log('PHP: " . var_dump($body_req) . "');</script>");
 
 		$argscard = array(
 			'method' => 'POST',
@@ -434,6 +439,8 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 		);
 
         $res = wp_remote_post($urlCard, $argscard);
+
+		echo("<script>console.log('PHP: " . var_dump($res) . "');</script>");
 
         if(wp_remote_retrieve_response_code($res) != 200){
             wc_add_notice(
@@ -499,6 +506,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
                     'merchantCode' => $this->merchant_code,
                     'publicKey' => $this->public_key
                 ],
+				'timeout' => 90
             ]
         );
 
@@ -532,7 +540,8 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 					'Authorization' => 'Bearer '. $token,
 					'Content-Type' => 'application/json'
 				),
-			'body' => json_encode(array('amount' => 1.00))
+			'body' => json_encode(array('amount' => 1.00)),
+			'timeout' => 90
 		);
 
 		$response = wp_remote_post($url, $args);
@@ -564,7 +573,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 	public function thankyou_page()
 	{
 		echo '<div style="font-size: 20px;color: #303030;text-align: center;">';
-		echo '<h3>O pagamento foi recebido com sucesso, muito obrigado!</h3>';
+		echo '<h3>O pagamento foi registrado no sistema com sucesso!</h3>';
 		echo '</div>';
 	}
 	
@@ -592,6 +601,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 				'Content-Type' => 'application/json'
 			),
 			'body' => json_encode(array('amount' => $total_amount)),
+			'timeout' => 90
 		);
 
 		$response = wp_remote_post($url, $args);
@@ -620,20 +630,20 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 		$parcelas = $this->getParcelas($token, $total_amount);
 
 
-		$options = array();
+		// $options = array();
 
-		foreach($parcelas as $parcela){
-			if(!empty($parcela['amount'])){
-				$valor = $parcela['amount'];
-			}
-			if(!empty($parcela['qtInstallment'])){
-				$qnt = $parcela['qtInstallment'];
-				$qntInt = $parcela['qtInstallment'];
-				settype($qntInt, 'integer');
-			}
+		// foreach($parcelas as $parcela){
+		// 	if(!empty($parcela['amount'])){
+		// 		$valor = $parcela['amount'];
+		// 	}
+		// 	if(!empty($parcela['qtInstallment'])){
+		// 		$qnt = $parcela['qtInstallment'];
+		// 		$qntInt = $parcela['qtInstallment'];
+		// 		settype($qntInt, 'integer');
+		// 	}
 
-			$options[$qntInt] = $qnt.'x de R$'. number_format((float)($valor), 2, '.', '');
-		}
+		// 	$options[$qntInt] = $qnt.'x de R$'. number_format((float)($valor), 2, '.', '');
+		// }
 		/*
 		* Apresentando campos para o método de pagamento com Cartão de Crédito
 		*/    
@@ -643,25 +653,52 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 			echo '<div style="display: flex; width: 100%!important; height: auto;">';
 
 			echo '<div style="display: block; width: 100% !important; height: auto;">';
-			echo '<label for="card_installments_1" class="">Número de Parcelas: &nbsp;<abbr class="required" title="obrigatório">*</abbr></label>';
-			woocommerce_form_field('card_installments', array(
-				'type' => 'radio',
-				'class' => array('form-row'),
-				'required' => true,
-				'options' => $options,
-				)
-			);
+
+			echo '<h4>Número de Parcelas: &nbsp;<abbr class="required" title="obrigatório">*</abbr></h4>';
+			echo '<br><span class="woocommerce-input-wrapper" style="padding-top: 15px;">';
+			
+			// woocommerce_form_field('card_installments', array(
+			// 	'type' => 'radio',
+			// 	'class' => array('form-row'),
+			// 	'required' => true,
+			// 	'options' => $options,
+			// 	)
+			// );
+
+			foreach($parcelas as $parcela){
+				if(!empty($parcela['amount']) && !empty($parcela['qtInstallment'])){
+					$valor = $parcela['amount'];
+				
+					$qnt = $parcela['qtInstallment'];
+					$qntInt = $parcela['qtInstallment'];
+					settype($qntInt, 'integer');
+					echo '<div style="margin-bottom: 10px;">';
+					echo '<input type="radio" class="input-radio" name="card_installments" value="'.$qntInt.'" data-saved-value="CFW_EMPTY" data-parsley-required="true" data-parsley-multiple="card_installments" id="card_installments_'.$qntInt.'">';
+					echo '<label for="card_installments_'.$qntInt.'" class="radio">'.$qntInt.'x de R$'.number_format((float)($valor), 2, '.', '').'</label>';
+					echo '</div>';
+				}
+			}
+
+			echo '</span>';
 
 			echo '</div>';
 			
 			echo '<div style="display: block; width: 100% !important; height: auto;">';
-			woocommerce_form_field('card_number', array(
-					'type' => 'text',
-					'class' => array('form-row'),
-					'label' => __('Informe o número do cartão: ', 'brazilpays-plugin'),
-					'required' => true,
-				)
-			);
+
+			echo '<p class="form-row form-row validate-required woocommerce-invalid woocommerce-invalid-required-field" id="card_numberfield" data-priority="">';
+			echo '<label for="card_number">Informe o número do cartão: <abbr class="required" title="obrigatório">*</abbr></label>';
+			echo '<span class="woocommerce-input-wrapper">';
+			echo '<input type="text" name="card_number" required class="input-text" onkeypress="return event.charCode >= 48 && event.charCode <= 57">';
+			echo '</span>';
+			echo '</p>';
+
+			// woocommerce_form_field('card_number', array(
+			// 		'type' => 'text',
+			// 		'class' => array('form-row'),
+			// 		'label' => __('Informe o número do cartão: ', 'brazilpays-plugin'),
+			// 		'required' => true,
+			// 	)
+			// );
 
 			woocommerce_form_field('card_name', array(
 					'type' => 'text',
@@ -693,29 +730,56 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 				)
 			);
 
-			woocommerce_form_field('card_year', array(
-					'type' => 'text',
-					'class' => array('form-row'),
-					'label' => __('Ano de vencimento: ', 'brazilpays-plugin'),
-					'required' => true,
-				)
-			);
+			// woocommerce_form_field('card_year', array(
+			// 		'type' => 'text',
+			// 		'class' => array('form-row'),
+			// 		'label' => __('Ano de vencimento: ', 'brazilpays-plugin'),
+			// 		'required' => true,
+			// 	)
+			// );
 
-			woocommerce_form_field('card_cvv', array(
-					'type' => 'text',
-					'class' => array('form-row'),
-					'label' => __('CVV: ', 'brazilpays-plugin'),
-					'required' => true,
-				)
-			);
+			echo '<p class="form-row form-row validate-required woocommerce-invalid woocommerce-invalid-required-field" id="card_number_field" data-priority="">';
+			echo '<label for="card_year">Ano de vencimento: <abbr class="required" title="obrigatório">*</abbr></label>';
+			echo '<span class="woocommerce-input-wrapper">';
+			echo '<select name="card_year" required class="input-text">';
+			for($i = 2023; $i <= 2060; $i++){
+				echo '<option value="'.$i.'">'.$i.'</option>';
+			}
+			echo '</select>';
+			echo '</span>';
+			echo '</p>';
 
-			woocommerce_form_field('card_cpf_cnpj', array(
-				'type' => 'text',
-				'class' => array('form-row'),
-				'label' => __('CPF ou CNPJ: ', 'brazilpays-plugin'),
-				'required' => true,
-				)
-			);
+			echo '<p class="form-row form-row validate-required woocommerce-invalid woocommerce-invalid-required-field" id="card_number_field" data-priority="">';
+			echo '<label for="card_cvv">CVV: <abbr class="required" title="obrigatório">*</abbr></label>';
+			echo '<span class="woocommerce-input-wrapper">';
+			echo '<input type="number" name="card_cvv" required class="input-text" max="999">';
+			echo '</span>';
+			echo '</p>';
+
+			// woocommerce_form_field('card_cvv', array(
+			// 		'type' => 'text',
+			// 		'class' => array('form-row'),
+			// 		'label' => __('CVV: ', 'brazilpays-plugin'),
+			// 		'required' => true,
+			// 	)
+			// );
+
+			// 
+
+			echo '<p class="form-row form-row validate-required woocommerce-invalid woocommerce-invalid-required-field" id="card_cpf_cnpj_field" data-priority="">';
+			echo '<label for="card_cpf_cnpj">CPF ou CNPJ: <abbr class="required" title="obrigatório">*</abbr></label>';
+			echo '<span class="woocommerce-input-wrapper">';
+			echo '<input type="text" id="card_cpf_cnpj" name="card_cpf_cnpj" required class="input-text" onkeypress="return event.charCode >= 48 && event.charCode <= 57" maxlength="14">';
+			echo '</span>';
+			echo '</p>';
+
+			// woocommerce_form_field('card_cpf_cnpj', array(
+			// 	'type' => 'text',
+			// 	'class' => array('form-row'),
+			// 	'label' => __('CPF ou CNPJ: ', 'brazilpays-plugin'),
+			// 	'required' => true,
+			// 	)
+			// );
 
 			woocommerce_form_field('card_gender', array(
 				'type' => 'select',
@@ -728,19 +792,59 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 					)
 				)
 			);
+			
+			echo '<p class="form-row form-row validate-required woocommerce-invalid woocommerce-invalid-required-field" id="card_number_field" data-priority="">';
+			echo '<label for="card_birth_date">Data de nascimento: <abbr class="required" title="obrigatório">*</abbr></label>';
+			echo '<span class="woocommerce-input-wrapper">';
+			echo '<input type="text" name="card_birth_date" required class="input-text" maxlength="10" onkeypress="return event.charCode >= 48 && event.charCode <= 57" id="card_birth_date">';
+			echo '<span/>';
+			echo '</p>';
 
-			woocommerce_form_field('card_birth_date', array(
-				'type' => 'text',
-				'class' => array('form-row'),
-				'label' => __('Data de nascimento: ', 'brazilpays-plugin'),
-				'placeholder' => __('(dd/mm/yyyy)', 'brazilpays-plugin'),
-				'required' => true,
-				)
-			);
+			?>
+
+			<script>
+				document.getElementById("card_birth_date").addEventListener("input", function() {
+				var i = document.getElementById("card_birth_date").value.length;
+				var str = document.getElementById("card_birth_date").value;
+				if (isNaN(Number(str.charAt(i-1)))) {
+					document.getElementById("card_birth_date").value = str.substr(0, i-1);
+				}
+				});
+				document.addEventListener('keydown', function(event) { 
+				if(event.keyCode != 46 && event.keyCode != 8){
+				var i = document.getElementById("card_birth_date").value.length;
+				if (i === 2 || i === 5)
+					document.getElementById("card_birth_date").value = document.getElementById("card_birth_date").value + "/";
+				}
+				});
+			</script>
+
+			<?php 
+
+			// woocommerce_form_field('card_birth_date', array(
+			// 	'type' => 'text',
+			// 	'class' => array('form-row'),
+			// 	'label' => __('Data de nascimento: ', 'brazilpays-plugin'),
+			// 	'required' => true,
+			// 	)
+			// );
 
 			echo '</div>';
 
 			echo '</div>';
+
+			?>
+
+			<script>
+				function checkPattern(elem){
+					if(!elem.value.match('^' + elem.getAttribute('pattern') + '$')){
+						alert('')
+					}
+				}
+			</script>
+			
+			
+			<?php
 
 			$description .= ob_get_clean();
 		}
@@ -773,6 +877,10 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 
 			if(isset($_POST['card_cvv']) && empty($_POST['card_cvv'])){
 				wc_add_notice('Por favor informe o CVV do cartão!', 'error');
+			}
+
+			if(isset($_POST['card_cvv']) && !empty($_POST['card_cvv']) && $_POST['card_cvv'] > 999){
+				wc_add_notice('Por favor informe um CVV válido!', 'error');
 			}
 
 			if(isset($_POST['card_gender']) && empty($_POST['card_gender'])){

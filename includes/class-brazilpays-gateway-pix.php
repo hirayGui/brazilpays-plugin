@@ -401,7 +401,7 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 			'exchange' => $cotacao_dolar['cotacao'],
 			'usedExchange' => $cotacao_dolar['usedExchange'],
 			'baseChargeId' => '',
-			'invoice' => '',
+			'invoice' => $order_id,
 			'description' => $order_id,
 			'typeCharge' => '0',
 			'paymentMethod' => '0',
@@ -413,17 +413,22 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 		];
 
 		$args = array(
+			'method' => 'POST',
 			'headers' => array(
 					'Authorization' => 'Bearer '. $token,
-					'Content-Type' => 'application/json'
+					'Content-Type' => 'application/json',
+					'Connection' => 'keep-alive',
+					'Accept-Encoding' => 'gzip, deflate, br',
+					'Accept' => 'application/json'
 				),
-			'body' => json_encode($body_req)
+			'body' => json_encode($body_req),
+			'timeout' => 90
 		);
 
         $response = wp_remote_post($urlPix, $args);		
 
         if(wp_remote_retrieve_response_code($response) != 200){
-            wc_add_notice(__('Ocorreu um erro ao realizar o pagamento, tente de novo!', 'brazil-pays'),
+            wc_add_notice(__('Ocorreu um erro ao realizar o pagamento, tente de novo!', 'brazilpays-plugin'),
                 'error'
             );
 
@@ -487,7 +492,7 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 				$response = wp_remote_get($url, $args);
 
 				//verificando resposta da requisição
-				if($response['response']['code'] != 200){
+				if(wp_remote_retrieve_response_code($response) != 200){
 					return ['result'=> 'fail'];
 				}
 
@@ -527,7 +532,7 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
         );
 
         //verificando resposta da requisição
-        if($response['response']['code'] != 200){
+        if(wp_remote_retrieve_response_code($response) != 200){
             return ['result'=> 'fail'];
         }
 
@@ -593,15 +598,17 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 		$order_data = $order->get_meta('url_qrcode');
 		$pix_img = $order->get_meta('pix-img');
 
+		echo '<div style="font-size: 20px;color: #303030;text-align: center;">';
+		echo 'Escaneie o Qr Code abaixo';
+		echo '</div>';
+
 		//apresentando qr_code
 		$finalImage = '<img src="' .$pix_img .'" id="imageQRCode" alt="QR Code" class="qrcode" style="display: block;margin-left: auto;margin-right: auto;"/>';
 		echo $finalImage;
 	
 		echo '<div style="font-size: 20px;color: #303030;text-align: center;">';
-		echo wp_kses_post(wpautop(wptexturize($this->instructions)));
-
 		echo 'Ou copie e cole a seguinte chave pix em seu aplicativo de banco para realizar o pagamento:';
-		echo '<blockquote>' . $order_data . '</blockquote>';
+		echo '<p>' . $order_data . '</p>';
 		echo '</div>';
 	}
 
@@ -619,21 +626,62 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 		}
 	}
 
+	public function getValor($token, $total_amount){
+
+		$url = 'https://api-brazilpays.megaleios.com/api/v1/Charge/Calculate';
+
+		$args = array(
+			'headers' => array(
+				'Authorization' => 'Bearer '. $token,
+				'Content-Type' => 'application/json'
+			),
+			'body' => json_encode(array('amount' => $total_amount)),
+		);
+
+		$response = wp_remote_post($url, $args);
+
+		//verificando resposta da requisição
+        if(wp_remote_retrieve_response_code($response) != 200){
+            return ['result'=> 'fail'];
+        }
+
+		if(!is_wp_error($response)){
+			$body = wp_remote_retrieve_body($response);
+
+			$data_request = json_decode($body, true);
+			$valor_final = $data_request['data']['pix']['grossValue'];
+
+			return $valor_final;
+		}
+	}
+
 	public function brazilpays_description_fields_pix($description, $payment_id){
+		$total_amount = $this->get_order_total();
+		$token = $this->authToken();
+		$valorPix = $this->getValor($token, $total_amount);
+
 		/*
 		* Apresentando campos para o método de pagamento por Pix 
 		*/
 		if($payment_id === 'brazilpays-pix'){
 			ob_start();
 
-			echo '<div style="display: block; width: 100%px !important; height: auto;">';
-			woocommerce_form_field('cpf_cnpj_pix', array(
-                'type' => 'text',
-                'class' => array('form-row'),
-                'label' => __('CPF ou CNPJ: ', 'brazilpays-plugin'),
-                'required' => true,
-			), ''
-			);
+			echo '<div style="display: block; width: 100% !important; height: auto;">';
+			echo '<h4 style="font-size: 20px">Pague R$'. number_format((float)($valorPix), 2, '.', '') .' no Pix</h4>';
+			// woocommerce_form_field('cpf_cnpj_pix', array(
+            //     'type' => 'text',
+            //     'class' => array('form-row'),
+            //     'label' => __('CPF ou CNPJ: ', 'brazilpays-plugin'),
+            //     'required' => true,
+			// 	), ''
+			// );
+
+			echo '<p class="form-row form-row validate-required woocommerce-invalid woocommerce-invalid-required-field" id="cpf_cnpj_pix_field" data-priority="">';
+			echo '<label for="cpf_cnpj_pix">CPF ou CNPJ: <abbr class="required" title="obrigatório">*</abbr></label>';
+			echo '<span class="woocommerce-input-wrapper">';
+			echo '<input type="text" name="cpf_cnpj_pix" required class="input-text" onkeypress="return event.charCode >= 48 && event.charCode <= 57" maxlength="14"';
+			echo '</span>';
+			echo '</p>';
 			echo '</div>';
 
 			$description .= ob_get_clean();
