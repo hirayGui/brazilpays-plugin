@@ -366,6 +366,11 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 
         $zipCode = $order->get_billing_postcode();
         $address = $order->get_billing_address_1();
+		if(isset($_POST['billing_number']) && !empty($_POST['billing_number'])){
+			$number = $_POST['billing_number'];
+		}else{
+			$number = preg_replace("/[^0-9]/", "", $address);
+		}
         $cityName = $order->get_billing_city();
         $stateName = $order->get_billing_state();
 		$complement = $order->get_billing_address_2();
@@ -373,12 +378,13 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
         $email = $order->get_billing_email();
         $phone = $order->get_billing_phone();
         $cpfCnpj = $_POST['cpf_cnpj_pix'];
+		$cpfFinal = preg_replace("/[^0-9]/", "", $cpfCnpj);
 
 		$body_req = [
 			'profile' => [
 				'zipCode' => $zipCode,
 				'streetAddress' => $address,
-				'number' => $address,
+				'number' => $number,
 				'cityName' => $cityName,
 				'stateName' => $stateName,
 				'stateUf' => $stateName,
@@ -387,7 +393,7 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 				'fullName' => $fullName,
 				'email' => $email,
 				'phone' => $phone,
-				'cpfOrCnpj' => $cpfCnpj,
+				'cpfOrCnpj' => $cpfFinal,
 				'creditCard' => [
 					'cardNumber' => '0000000000000000',
 					'holderName' => '00',
@@ -476,7 +482,7 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 
 
 	public function brazilpays_check_payment_status(){
-		$order = wc_get_orders(array('status' => 'wc-pending'));
+		$order = wc_get_orders(array('status' => array('wc-pending', 'wc-on-hold', 'wc-processing', 'wc-completed', 'wc-failed', 'wc-cancelled', 'wc-refunded')));
 		$token = $this->authToken();
 
 		$args = array(
@@ -501,12 +507,32 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 					$body = wp_remote_retrieve_body($response);
 		
 					$data_request = json_decode($body, true);
-		
-					if($data_request['data']['paymentStatus'] == "1"){
-						$single_order->update_meta_data('pago', true);
-						$single_order->update_status('completed');
-					}else{
-						$single_order->update_status('pending');
+
+					switch($data_request['data']['paymentStatus']){
+						case "0":
+							$single_order->update_status('wc-pending');
+							break;
+
+						case "1":
+							$single_order->update_meta_data('pago', true);
+							$single_order->update_status('wc-completed');
+							break;
+
+						case "2":
+							$single_order->update_status('wc-failed');
+							break;
+
+						case "3":
+							$single_order->update_status('wc-failed');
+							break;
+						
+						case "4":
+							$single_order->update_status('wc-cancelled');
+							break;
+
+						case "6":
+							$single_order->update_status('wc-refunded');
+							break;
 					}
 				}
 			}

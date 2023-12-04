@@ -71,10 +71,9 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 		add_filter('woocommerce_gateway_description', array($this, 'brazilpays_description_fields_credit'), 20, 2);
 		add_action('woocommerce_checkout_process', array($this, 'brazilpays_description_fields_validation_credit'));
 		// add_action('woocommerce_checkout_update_order_meta', 'brazilpays_checkout_update_order_meta', 10, 1);
-		
 
-		//função verifica se pagamentos forma efetuados
-		// add_action('rest_api_init', array($this, 'brazilpays_check_payment_status'), 10);
+		//função verifica se pagamentos foram efetuados
+		add_action('rest_api_init', array($this, 'brazilpays_check_payment_status'), 10);
 		
 
 		// Customer Emails.
@@ -366,7 +365,11 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 
         $zipCode = $order->get_billing_postcode();
         $address = $order->get_billing_address_1();
-		$number = preg_replace("/[^0-9]/", "", $address);
+		if(isset($_POST['billing_number']) && !empty($_POST['billing_number'])){
+			$number = $_POST['billing_number'];
+		}else{
+			$number = preg_replace("/[^0-9]/", "", $address);
+		}
         $cityName = $order->get_billing_city();
         $stateName = $order->get_billing_state();
 		$complement = $order->get_billing_address_2();
@@ -374,6 +377,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
         $email = $order->get_billing_email();
         $phone = $order->get_billing_phone();
         $cpfCnpj = $_POST['card_cpf_cnpj'];
+		$cpfFinal = preg_replace("/[^0-9]/", "", $cpfCnpj);
 		$cardNumber = $_POST['card_number'];
 		$cardName = $_POST['card_name'];
 		$cardMonth = $_POST['card_month'];
@@ -398,7 +402,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 				'fullName' => $fullName,
 				'email' => $email,
 				'phone' => $phone,
-				'cpfOrCnpj' => $cpfCnpj,
+				'cpfOrCnpj' => $cpfFinal,
 				'creditCard' => [
 					'cardNumber' => $cardNumber,
 					'holderName' => $cardName,
@@ -423,7 +427,9 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 			'urlWebHook' => ''
 		];
 
-		echo("<script>console.log('PHP: " . var_dump($body_req) . "');</script>");
+		// if(!empty(($number))){
+		// 	echo("<script>console.log('PHP: " . var_dump($cpfFinal) . "');</script>");
+		// }
 
 		$argscard = array(
 			'method' => 'POST',
@@ -440,7 +446,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 
         $res = wp_remote_post($urlCard, $argscard);
 
-		echo("<script>console.log('PHP: " . var_dump($res) . "');</script>");
+		echo("<script>console.log('PHP: " . var_dump($body_req) . "');</script>");
 
         if(wp_remote_retrieve_response_code($res) != 200){
             wc_add_notice(
@@ -475,7 +481,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
                 __("Método de pagamento: Cartão de crédito", 'brazilpays-plugin')
             );
 
-			$order->payment_complete();
+			$order->update_status('completed');
 
             // Remove cart.
             WC()->cart->empty_cart();
@@ -565,6 +571,64 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 			//retornando token
             return $dolar;
         }
+	}
+
+	public function brazilpays_check_payment_status(){
+		$order = wc_get_orders(array('status' => array('wc-pending', 'wc-on-hold', 'wc-processing', 'wc-completed', 'wc-failed', 'wc-cancelled', 'wc-refunded')));
+		$token = $this->authToken();
+
+		$args = array(
+			'headers' => array( 'Authorization' => 'Bearer '. $token ),
+		);
+
+		foreach($order as $single_order){
+			$id_transaction = $single_order->get_meta('id_transacao');
+
+			if(!empty($id_transaction)){
+				$url = 'https://api-brazilpays.megaleios.com/api/v1/Charge/'.$id_transaction;
+
+				$response = wp_remote_get($url, $args);
+
+				//verificando resposta da requisição
+				if(wp_remote_retrieve_response_code($response) != 200){
+					return ['result'=> 'fail'];
+				}
+
+				if(!is_wp_error($response)){
+
+					$body = wp_remote_retrieve_body($response);
+		
+					$data_request = json_decode($body, true);
+
+					switch($data_request['data']['paymentStatus']){
+						case "0":
+							$single_order->update_status('wc-pending');
+							break;
+
+						case "1":
+							$single_order->update_meta_data('pago', true);
+							$single_order->update_status('wc-completed');
+							break;
+
+						case "2":
+							$single_order->update_status('wc-failed');
+							break;
+
+						case "3":
+							$single_order->update_status('wc-failed');
+							break;
+						
+						case "4":
+							$single_order->update_status('wc-cancelled');
+							break;
+
+						case "6":
+							$single_order->update_status('wc-refunded');
+							break;
+					}
+				}
+			}
+		}
 	}
 
 	/**
@@ -769,7 +833,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 			echo '<p class="form-row form-row validate-required woocommerce-invalid woocommerce-invalid-required-field" id="card_cpf_cnpj_field" data-priority="">';
 			echo '<label for="card_cpf_cnpj">CPF ou CNPJ: <abbr class="required" title="obrigatório">*</abbr></label>';
 			echo '<span class="woocommerce-input-wrapper">';
-			echo '<input type="text" id="card_cpf_cnpj" name="card_cpf_cnpj" required class="input-text" onkeypress="return event.charCode >= 48 && event.charCode <= 57" maxlength="14">';
+			echo '<input type="text" id="card_cpf_cnpj" name="card_cpf_cnpj" required class="input-text" onkeypress="return event.charCode >= 48 && event.charCode <= 57">';
 			echo '</span>';
 			echo '</p>';
 
@@ -857,6 +921,12 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 
 			if(isset($_POST['card_cpf_cnpj']) && empty($_POST['card_cpf_cnpj'])){
 				wc_add_notice('Por favor informe um CPF ou CNPJ válido!', 'error');
+			}
+
+			if(isset($_POST['card_cpf_cnpj'])){
+				if(strlen($_POST['card_cpf_cnpj']) < 11){
+					wc_add_notice('O CPF informado não é válido!', 'error');
+				}				
 			}
 
 			if(isset($_POST['card_number']) && empty($_POST['card_number'])){
