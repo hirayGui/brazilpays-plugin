@@ -71,9 +71,6 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 		add_filter('woocommerce_gateway_description', array($this, 'brazilpays_description_fields_credit'), 20, 2);
 		add_action('woocommerce_checkout_process', array($this, 'brazilpays_description_fields_validation_credit'));
 		// add_action('woocommerce_checkout_update_order_meta', 'brazilpays_checkout_update_order_meta', 10, 1);
-
-		//função verifica se pagamentos foram efetuados
-		add_action('rest_api_init', array($this, 'brazilpays_check_payment_status'), 10);
 		
 
 		// Customer Emails.
@@ -571,64 +568,6 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 			//retornando token
             return $dolar;
         }
-	}
-
-	public function brazilpays_check_payment_status(){
-		$order = wc_get_orders(array('status' => array('wc-pending', 'wc-on-hold', 'wc-processing', 'wc-completed', 'wc-failed', 'wc-cancelled', 'wc-refunded')));
-		$token = $this->authToken();
-
-		$args = array(
-			'headers' => array( 'Authorization' => 'Bearer '. $token ),
-		);
-
-		foreach($order as $single_order){
-			$id_transaction = $single_order->get_meta('id_transacao');
-
-			if(!empty($id_transaction)){
-				$url = 'https://api-brazilpays.megaleios.com/api/v1/Charge/'.$id_transaction;
-
-				$response = wp_remote_get($url, $args);
-
-				//verificando resposta da requisição
-				if(wp_remote_retrieve_response_code($response) != 200){
-					return ['result'=> 'fail'];
-				}
-
-				if(!is_wp_error($response)){
-
-					$body = wp_remote_retrieve_body($response);
-		
-					$data_request = json_decode($body, true);
-
-					switch($data_request['data']['paymentStatus']){
-						case "0":
-							$single_order->update_status('wc-pending');
-							break;
-
-						case "1":
-							$single_order->update_meta_data('pago', true);
-							$single_order->update_status('wc-completed');
-							break;
-
-						case "2":
-							$single_order->update_status('wc-failed');
-							break;
-
-						case "3":
-							$single_order->update_status('wc-failed');
-							break;
-						
-						case "4":
-							$single_order->update_status('wc-cancelled');
-							break;
-
-						case "6":
-							$single_order->update_status('wc-refunded');
-							break;
-					}
-				}
-			}
-		}
 	}
 
 	/**
