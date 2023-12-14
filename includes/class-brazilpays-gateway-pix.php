@@ -508,32 +508,48 @@ class WC_BrazilPays_Gateway_Pix extends WC_Payment_Gateway
 		
 					$data_request = json_decode($body, true);
 
-					switch($data_request['data']['paymentStatus']){
-						case "0":
+					if(!empty($data_request['data']['paymentStatus'])){
+						if($data_request['data']['paymentStatus'] === 0){
 							$single_order->update_status('wc-pending');
-							break;
-
-						case "1":
+						} else if($data_request['data']['paymentStatus'] === 1){
 							$single_order->update_meta_data('pago', true);
 							$single_order->update_status('wc-completed');
-							break;
-
-						case "2":
+						} else if($data_request['data']['paymentStatus'] === 2){
 							$single_order->update_status('wc-failed');
-							break;
-
-						case "3":
+						} else if($data_request['data']['paymentStatus'] === 3){
 							$single_order->update_status('wc-failed');
-							break;
-						
-						case "4":
+						} else if($data_request['data']['paymentStatus'] === 4){
 							$single_order->update_status('wc-cancelled');
-							break;
-
-						case "6":
+						} else if($data_request['data']['paymentStatus'] === 6){
 							$single_order->update_status('wc-refunded');
-							break;
+						}
 					}
+					// switch($data_request['data']['paymentStatus']){
+					// 	case "0":
+					// 		$single_order->update_status('wc-pending');
+					// 		break;
+
+					// 	case "1":
+					// 		$single_order->update_meta_data('pago', true);
+					// 		$single_order->update_status('wc-completed');
+					// 		break;
+
+					// 	case "2":
+					// 		$single_order->update_status('wc-failed');
+					// 		break;
+
+					// 	case "3":
+					// 		$single_order->update_status('wc-failed');
+					// 		break;
+						
+					// 	case "4":
+					// 		$single_order->update_status('wc-cancelled');
+					// 		break;
+
+					// 	case "6":
+					// 		$single_order->update_status('wc-refunded');
+					// 		break;
+					// }
 				}
 			}
 		}
