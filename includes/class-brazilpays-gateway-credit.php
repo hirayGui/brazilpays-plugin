@@ -574,7 +574,7 @@ class WC_BrazilPays_Gateway_Credit extends WC_Payment_Gateway
 	}
 
 	public function brazilpays_check_payment_status(){
-		$order = wc_get_orders(array('status' => array('wc-pending', 'wc-on-hold', 'wc-processing', 'wc-completed', 'wc-failed', 'wc-cancelled', 'wc-refunded')));
+		$order = wc_get_orders(array('status' => array('wc-pending', 'wc-on-hold', 'wc-processing', 'wc-completed', 'wc-failed', 'wc-cancelled', 'wc-refunded'), 'limit' => -1));
 		$token = $this->authToken();
 
 		$args = array(

@@ -6,7 +6,7 @@
  * Author: BrazilPays
  * Author URI: https://brazilpays.com/
  * Description: Este plugin permite que o usuário possa realizar pagamentos através de um checkout transparente da brazilpays dentro do woocommerce
- * Version: 2.8.0
+ * Version: 2.8.1
  * License:     GPL-2.0+
  * License URL: http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain: brazilpays-plugin 
